@@ -1,18 +1,27 @@
 #include <Arduino.h>
 
-// put function declarations here:
-int myFunction(int, int);
+#include <Wire.h>
+#include "powerSensor.h"
+#include "oled.h"
+#include "tempSensor.h"
+#include "logic.h"
 
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+void setup()
+{
+  Serial.begin(115200);
+  ina226_init(I2C_ADDRESS);
+  Wire.begin();
+  oled_init();
+  ds18b20_init();
+  setup_logic();
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-}
+void loop()
+{
+  ina226_read();
+  oledPrint();
+  read_temperature();
+  loop_logic();
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  delay(1000);
 }
