@@ -9,6 +9,23 @@
 #define OFF_PIN 13
 #define ALARM_PIN 12
 
+// Timing and state constants (replace magic numbers)
+const unsigned long DEBOUNCE_DELAY_MS = 50;        // ms for button debounce
+const unsigned long ALARM_BLINK_INTERVAL_MS = 500; // ms interval for alarm blinking
+const unsigned long LOGIC_LOOP_DELAY_MS = 150;     // ms delay at end of logic loop
+
+// Button active/released states (INPUT_PULLUP wiring)
+const int BTN_ACTIVE_STATE = LOW;
+const int BTN_RELEASED_STATE = HIGH;
+
+// Alarm logic thresholds (extract magic numbers here)
+// Alarm logic thresholds (configurable at runtime)
+uint8_t alarmBatteryPercent = 10;   // if batteryLevel < this → alarm
+float alarmVoltageV = 4.2;         // voltage threshold in volts
+float alarmCurrentmA = 1000.0;     // current threshold in milliamps
+
+bool alarm = false;
+
 void setup_logic()
 {
     pinMode(BTN_PIN, INPUT_PULLUP);
@@ -24,10 +41,15 @@ void setup_logic()
 }
 
 bool stationOn = false;
-int lastReading = HIGH;
-int stableState = HIGH;
+int lastReading = BTN_RELEASED_STATE;
+int stableState = BTN_RELEASED_STATE;
 unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 50;
+const unsigned long debounceDelay = DEBOUNCE_DELAY_MS;
+
+// Допоміжна змінна для виявлення перехідного фронту (HIGH -> LOW)
+int prevStableState = HIGH;
+// Кнопка "застреленa" після натискання, поки не відпущена
+bool buttonArmed = true;
 
 unsigned long alarmBlinkLast = 0;
 bool alarmLedState = false;
@@ -49,13 +71,22 @@ void loop_logic()
         {
             stableState = reading;
 
-            // Натискання — перехід HIGH -> LOW
-            if (stableState == LOW)
+            // Переключаємо лише на чистому переході RELEASED -> ACTIVE і тільки якщо кнопка "застрелена" (re-armed)
+            if (stableState == BTN_ACTIVE_STATE && prevStableState == BTN_RELEASED_STATE && buttonArmed)
             {
                 stationOn = !stationOn;
-                Serial.print("[BUTTON] Press detected → Station state: ");
+                buttonArmed = false; // чекаємо відпускання
+                Serial.print("[BUTTON] Press detected -> Station state: ");
                 Serial.println(stationOn ? "ON" : "OFF");
             }
+
+            // Коли кнопка відпущена (RELEASED) — реармимо її для наступного натискання
+            if (stableState == BTN_RELEASED_STATE)
+            {
+                buttonArmed = true;
+            }
+
+            prevStableState = stableState;
         }
     }
 
@@ -74,16 +105,16 @@ void loop_logic()
     }
 
     // --- Логіка аварії ---
-    bool alarm = false;
-    if (batteryLevel < 10)
+    alarm = false; // скидання перед перевірками
+    if (batteryLevel < alarmBatteryPercent)
         alarm = true;
-    if (voltage > 4.2 && current > 1000.0)
+    if (voltage > alarmVoltageV && current > alarmCurrentmA)
         alarm = true;
 
     if (alarm)
     {
         unsigned long now = millis();
-        if (now - alarmBlinkLast >= 500)
+        if (now - alarmBlinkLast >= ALARM_BLINK_INTERVAL_MS)
         {
             alarmBlinkLast = now;
             alarmLedState = !alarmLedState;
@@ -106,7 +137,7 @@ void loop_logic()
     Serial.print(" | ALARM_PIN=");
     Serial.println(digitalRead(ALARM_PIN));
 
-    delay(150);
+    delay(LOGIC_LOOP_DELAY_MS);
 }
 
 #endif

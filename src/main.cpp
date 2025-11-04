@@ -5,6 +5,8 @@
 #include "oled.h"
 #include "tempSensor.h"
 #include "logic.h"
+#include "mqtt.h"
+#include "web.h"
 
 void setup()
 {
@@ -14,6 +16,8 @@ void setup()
   oled_init();
   ds18b20_init();
   setup_logic();
+  setup_mqtt();
+  setup_web();
 }
 
 void loop()
@@ -22,6 +26,8 @@ void loop()
   oledPrint();
   read_temperature();
   loop_logic();
+  loop_mqtt();
+  web_loop();
 
   delay(1000);
 }
