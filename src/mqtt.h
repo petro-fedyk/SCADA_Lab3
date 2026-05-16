@@ -9,15 +9,19 @@
 #include "tempSensor.h"
 
 // --- WiFi Settings ---
-#define WIFI_SSID "admin"
-#define WIFI_PASSWORD "domestos1216"
+#define WIFI_SSID "Redmi Note 12 Pro"
+#define WIFI_PASSWORD "12032006"
+
+// #define WIFI_SSID "admin"
+// #define WIFI_PASSWORD "domestos1216"
 
 // --- MQTT Broker IP ---
-#define MQTT_SERVER "192.168.1.45" // <-- IP твоєї Ubuntu машини
+#define MQTT_SERVER "192.168.10.216" // <-- IP твоєї Ubuntu машини
 #define MQTT_PORT 1883
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+void mqtt_callback(char *topic, byte *payload, unsigned int length);
 
 // --- WiFi setup ---
 void setup_wifi()
@@ -59,6 +63,8 @@ void reconnect_mqtt()
             delay(5000);
         }
     }
+    client.subscribe("scada/lab3/cmd");
+    Serial.println("[MQTT] Subscribed to scada/lab3/cmd");
 }
 
 // --- MQTT setup ---
@@ -66,6 +72,8 @@ void setup_mqtt()
 {
     setup_wifi();
     client.setServer(MQTT_SERVER, MQTT_PORT);
+    client.setCallback(mqtt_callback);
+
     Serial.println("[MQTT] Setup complete");
 }
 
@@ -78,13 +86,11 @@ void loop_mqtt()
     }
     client.loop();
 
-
     // Build JSON payload and publish to test topic
     const char *topic = "scada/lab3/test";
 
-    bool alarmFlag = false;
-    if (batteryLevel < alarmBatteryPercent) alarmFlag = true;
-    if (voltage > alarmVoltageV && current > alarmCurrentmA) alarmFlag = true;
+    // Use the alarm state computed by logic (loop_logic sets `alarm`)
+    bool alarmFlag = alarm;
 
     String payload = "{";
     payload += "\"temperature\":" + String(temperatureC, 2) + ",";
@@ -102,7 +108,29 @@ void loop_mqtt()
     Serial.print(": ");
     Serial.println(payload);
 
-    delay(5000);
+    delay(1000);
+}
+
+void mqtt_callback(char *topic, byte *payload, unsigned int length)
+{
+    String msg;
+    for (unsigned int i = 0; i < length; i++)
+        msg += (char)payload[i];
+
+    Serial.print("[MQTT] Message arrived: ");
+    Serial.println(msg);
+
+    // Примітивний JSON parse (достатньо для лаби)
+    if (msg.indexOf("\"station\":true") >= 0)
+    {
+        stationOn = true;
+        Serial.println("[MQTT] Station turned ON");
+    }
+    else if (msg.indexOf("\"station\":false") >= 0)
+    {
+        stationOn = false;
+        Serial.println("[MQTT] Station turned OFF");
+    }
 }
 
 #endif

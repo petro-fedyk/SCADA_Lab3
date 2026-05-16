@@ -53,21 +53,40 @@ uint8_t voltageToPercent(float v)
     return 0;
 }
 
+// void ina226_read()
+// {
+//     ina226.readAndClearFlags();
+//     voltage = ina226.getBusVoltage_V();
+//     current = ina226.getCurrent_mA();
+//     power = ina226.getBusPower();
+
+//     // Обчислюємо рівень заряду батареї на основі напруги
+//     batteryLevel = voltageToPercent(voltage);
+
+//     Serial.print("U[V]=");
+//     Serial.print(voltage);
+//     Serial.print("  I[mA]=");
+//     Serial.print(current);
+//     Serial.print("  P[mW]=");
+//     Serial.println(power);
+//     Serial.print("  Battery[%]=");
+//     Serial.println(batteryLevel);
+// }
+
 void ina226_read()
 {
-    ina226.readAndClearFlags();
-    voltage = ina226.getBusVoltage_V();
-    current = ina226.getCurrent_mA();
-    power = ina226.getBusPower();
+    // Генеруємо фейкові значення
+    voltage = random(360, 420) / 100.0; // 3.60–4.20 V
+    current = random(0, 2000) / 1000.0; // 0–2.000 A
+    power = voltage * current;          // Вати (P = U * I)
 
-    // Обчислюємо рівень заряду батареї на основі напруги
     batteryLevel = voltageToPercent(voltage);
 
-    Serial.print("U[V]=");
+    Serial.print("FAKE U[V]=");
     Serial.print(voltage);
-    Serial.print("  I[mA]=");
+    Serial.print("  I[A]=");
     Serial.print(current);
-    Serial.print("  P[mW]=");
+    Serial.print("  P[W]=");
     Serial.println(power);
     Serial.print("  Battery[%]=");
     Serial.println(batteryLevel);

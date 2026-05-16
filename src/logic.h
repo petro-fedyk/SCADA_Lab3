@@ -23,6 +23,7 @@ const int BTN_RELEASED_STATE = HIGH;
 uint8_t alarmBatteryPercent = 10;   // if batteryLevel < this → alarm
 float alarmVoltageV = 4.2;         // voltage threshold in volts
 float alarmCurrentmA = 1000.0;     // current threshold in milliamps
+float alarmTempC = 40.0;           // temperature threshold in °C
 
 bool alarm = false;
 
@@ -109,6 +110,9 @@ void loop_logic()
     if (batteryLevel < alarmBatteryPercent)
         alarm = true;
     if (voltage > alarmVoltageV && current > alarmCurrentmA)
+        alarm = true;
+    // temperature-based alarm
+    if (temperatureC > alarmTempC)
         alarm = true;
 
     if (alarm)
