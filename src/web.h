@@ -6,8 +6,7 @@
 #include <ESP8266WebServer.h>
 #include "indexHtml.h"
 #include "logic.h"
-#include "powerSensor.h"
-#include "tempSensor.h"
+#include "waterLevelSensor.h"
 
 ESP8266WebServer server(80);
 // Single SSE client support
@@ -25,16 +24,13 @@ void handleRoot()
 void handleStatus()
 {
     String js = "{";
-    js += "\"temperature\":" + String(temperatureC, 2) + ",";
-    js += "\"voltage\":" + String(voltage, 2) + ",";
-    js += "\"current\":" + String(current, 2) + ",";
-    js += "\"power\":" + String(power, 2) + ",";
-    js += "\"battery\":" + String(batteryLevel) + ",";
-    js += "\"stationOn\":" + String(stationOn ? "true" : "false") + ",";
+    js += "\"water_level\":" + String(water_level, 1) + ",";
+    js += "\"pump\":" + String(pumpOn ? "true" : "false") + ",";
+    js += "\"auto_pump\":" + String(auto_pump ? "true" : "false") + ",";
+    js += "\"alarm_indc\":" + String(alarm_indc) + ",";
     js += "\"onLed\":" + String(digitalRead(ON_PIN) ? "true" : "false") + ",";
     js += "\"offLed\":" + String(digitalRead(OFF_PIN) ? "true" : "false") + ",";
-    js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false") + ",";
-    js += "\"thresholds\":{\"battery\":" + String(alarmBatteryPercent) + ",\"voltage\":" + String(alarmVoltageV,2) + ",\"current\":" + String(alarmCurrentmA,1) + "}";
+    js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false");
     js += "}";
 
     server.send(200, "application/json", js);
@@ -58,37 +54,16 @@ void handleEvents()
 // Toggle station on/off
 void handleToggle()
 {
-    stationOn = !stationOn;
-    server.send(200, "text/plain", stationOn ? "ON" : "OFF");
+    if (auto_pump)
+        auto_pump = false;
+    pumpOn = !pumpOn;
+    server.send(200, "text/plain", pumpOn ? "ON" : "OFF");
 }
 
-// Set thresholds via POST (form data: battery, voltage, current)
-void handleSettings()
+void handleToggleAuto()
 {
-    if (server.method() != HTTP_POST)
-    {
-        server.send(405, "text/plain", "Method Not Allowed");
-        return;
-    }
-
-    if (server.hasArg("battery"))
-    {
-        int b = server.arg("battery").toInt();
-        if (b >= 0 && b <= 100)
-            alarmBatteryPercent = (uint8_t)b;
-    }
-    if (server.hasArg("voltage"))
-    {
-        float v = server.arg("voltage").toFloat();
-        alarmVoltageV = v;
-    }
-    if (server.hasArg("current"))
-    {
-        float c = server.arg("current").toFloat();
-        alarmCurrentmA = c;
-    }
-
-    server.send(200, "text/plain", "OK");
+    auto_pump = !auto_pump;
+    server.send(200, "text/plain", auto_pump ? "AUTO" : "MANUAL");
 }
 
 void setup_web()
@@ -97,7 +72,7 @@ void setup_web()
     server.on("/status", HTTP_GET, handleStatus);
     server.on("/events", HTTP_GET, handleEvents);
     server.on("/toggle", HTTP_GET, handleToggle);
-    server.on("/settings", HTTP_POST, handleSettings);
+    server.on("/toggle_auto", HTTP_GET, handleToggleAuto);
     server.begin();
     Serial.println("[WEB] Server started");
 }
@@ -121,16 +96,13 @@ void web_loop()
             lastSseMs = now;
             // build JSON same as handleStatus
             String js = "{";
-            js += "\"temperature\":" + String(temperatureC, 2) + ",";
-            js += "\"voltage\":" + String(voltage, 2) + ",";
-            js += "\"current\":" + String(current, 2) + ",";
-            js += "\"power\":" + String(power, 2) + ",";
-            js += "\"battery\":" + String(batteryLevel) + ",";
-            js += "\"stationOn\":" + String(stationOn ? "true" : "false") + ",";
+            js += "\"water_level\":" + String(water_level, 1) + ",";
+            js += "\"pump\":" + String(pumpOn ? "true" : "false") + ",";
+            js += "\"auto_pump\":" + String(auto_pump ? "true" : "false") + ",";
+            js += "\"alarm_indc\":" + String(alarm_indc) + ",";
             js += "\"onLed\":" + String(digitalRead(ON_PIN) ? "true" : "false") + ",";
             js += "\"offLed\":" + String(digitalRead(OFF_PIN) ? "true" : "false") + ",";
-            js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false") + ",";
-            js += "\"thresholds\":{\"battery\":" + String(alarmBatteryPercent) + ",\"voltage\":" + String(alarmVoltageV,2) + ",\"current\":" + String(alarmCurrentmA,1) + "}";
+            js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false");
             js += "}";
 
             // send as SSE data: line starting with "data: " and ending with double newline

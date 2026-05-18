@@ -7,7 +7,7 @@ const char index_html[] = R"rawliteral(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SCADA Lab3 — Control</title>
+  <title>SCADA Lab3 — Pump Station</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;margin:12px;color:#222}
     .row{display:flex;gap:12px;align-items:center;margin:8px 0}
@@ -23,16 +23,15 @@ const char index_html[] = R"rawliteral(
   </style>
 </head>
 <body>
-  <h2>SCADA Lab3 — Web Interface</h2>
+  <h2>SCADA Lab3 — Pump Station</h2>
   <div class="row card">
     <div>
       <div><strong>Measurements</strong></div>
       <div id="meas">
-        <div>Temperature: <span id="temperature">--</span> °C</div>
-        <div>Voltage: <span id="voltage">--</span> V</div>
-        <div>Current: <span id="current">--</span> mA</div>
-        <div>Power: <span id="power">--</span> mW</div>
-        <div>Battery: <span id="battery">--</span> %</div>
+        <div>Water level: <span id="water_level">--</span> %</div>
+        <div>Pump: <span id="pump_state">--</span></div>
+        <div>Auto pump: <span id="auto_state">--</span></div>
+        <div>Alarm code: <span id="alarm_indc">--</span></div>
       </div>
     </div>
     <div style="margin-left:20px">
@@ -40,16 +39,9 @@ const char index_html[] = R"rawliteral(
       <div class="row"><span id="led-on" class="led off"></span> ON</div>
       <div class="row"><span id="led-off" class="led off"></span> OFF</div>
       <div class="row"><span id="led-alarm" class="led off"></span> ALARM</div>
-      <div class="row" style="margin-top:8px"><label>Station</label><button id="btn-toggle">Toggle ON/OFF</button></div>
+      <div class="row" style="margin-top:8px"><label>Pump</label><button id="btn-toggle">Toggle ON/OFF</button></div>
+      <div class="row" style="margin-top:8px"><label>Auto</label><button id="btn-auto">Toggle AUTO</button></div>
     </div>
-  </div>
-
-  <div class="card" style="margin-top:12px">
-    <div><strong>Alarm thresholds</strong></div>
-    <div class="row"><label>Battery % &lt; </label><input id="th-batt" type="number" min="0" max="100"></div>
-    <div class="row"><label>Voltage &gt; </label><input id="th-volt" type="number" step="0.01"></div>
-    <div class="row"><label>Current &gt; </label><input id="th-curr" type="number" step="0.1"></div>
-    <div class="row"><button id="btn-save">Save thresholds</button><span id="save-res" style="margin-left:8px"></span></div>
   </div>
 
   <div class="card" style="margin-top:12px">
@@ -62,23 +54,17 @@ async function fetchStatus(){
   try{
     const r = await fetch('/status');
     const j = await r.json();
-    document.getElementById('temperature').textContent = j.temperature.toFixed(2);
-    document.getElementById('voltage').textContent = j.voltage.toFixed(2);
-    document.getElementById('current').textContent = j.current.toFixed(2);
-    document.getElementById('power').textContent = j.power.toFixed(2);
-    document.getElementById('battery').textContent = j.battery;
+    document.getElementById('water_level').textContent = j.water_level.toFixed(1);
+    document.getElementById('pump_state').textContent = j.pump ? 'ON' : 'OFF';
+    document.getElementById('auto_state').textContent = j.auto_pump ? 'ON' : 'OFF';
+    document.getElementById('alarm_indc').textContent = j.alarm_indc;
 
     // LEDs
     setLed('led-on', j.onLed);
     setLed('led-off', j.offLed);
     setLed('led-alarm', j.alarmLed);
 
-    document.getElementById('raw').textContent = JSON.stringify(j, null, 2);
-
-    // thresholds
-    document.getElementById('th-batt').value = j.thresholds.battery;
-    document.getElementById('th-volt').value = j.thresholds.voltage;
-    document.getElementById('th-curr').value = j.thresholds.current;
+  document.getElementById('raw').textContent = JSON.stringify(j, null, 2);
 
   }catch(e){ console.log('err',e); }
 }
@@ -95,18 +81,9 @@ document.getElementById('btn-toggle').addEventListener('click', async ()=>{
   setTimeout(fetchStatus,200);
 });
 
-document.getElementById('btn-save').addEventListener('click', async ()=>{
-  const b = document.getElementById('th-batt').value;
-  const v = document.getElementById('th-volt').value;
-  const c = document.getElementById('th-curr').value;
-  const body = new URLSearchParams();
-  body.append('battery', b);
-  body.append('voltage', v);
-  body.append('current', c);
-  const res = await fetch('/settings', {method:'POST', body});
-  const txt = await res.text();
-  document.getElementById('save-res').textContent = txt;
-  setTimeout(()=>document.getElementById('save-res').textContent='',2000);
+document.getElementById('btn-auto').addEventListener('click', async ()=>{
+  await fetch('/toggle_auto');
+  setTimeout(fetchStatus,200);
 });
 
 // Real-time updates via Server-Sent Events
@@ -115,18 +92,14 @@ if (typeof EventSource !== 'undefined') {
   es.onmessage = function(e) {
     try{
       const j = JSON.parse(e.data);
-      document.getElementById('temperature').textContent = j.temperature.toFixed(2);
-      document.getElementById('voltage').textContent = j.voltage.toFixed(2);
-      document.getElementById('current').textContent = j.current.toFixed(2);
-      document.getElementById('power').textContent = j.power.toFixed(2);
-      document.getElementById('battery').textContent = j.battery;
+      document.getElementById('water_level').textContent = j.water_level.toFixed(1);
+      document.getElementById('pump_state').textContent = j.pump ? 'ON' : 'OFF';
+      document.getElementById('auto_state').textContent = j.auto_pump ? 'ON' : 'OFF';
+      document.getElementById('alarm_indc').textContent = j.alarm_indc;
       setLed('led-on', j.onLed);
       setLed('led-off', j.offLed);
       setLed('led-alarm', j.alarmLed);
       document.getElementById('raw').textContent = JSON.stringify(j, null, 2);
-      document.getElementById('th-batt').value = j.thresholds.battery;
-      document.getElementById('th-volt').value = j.thresholds.voltage;
-      document.getElementById('th-curr').value = j.thresholds.current;
     }catch(err){ console.log(err); }
   };
   es.onerror = function(){ console.log('SSE error'); };
