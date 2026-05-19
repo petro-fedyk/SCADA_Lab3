@@ -5,6 +5,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+// D3 on Wemos D1 mini maps to GPIO0
 #define ONE_WIRE_BUS 0
 
 float temperatureC = 0.0;

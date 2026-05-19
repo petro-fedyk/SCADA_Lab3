@@ -7,7 +7,7 @@ const char index_html[] = R"rawliteral(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SCADA Lab3 — Pump Station</title>
+  <title>SCADA Lab3 — Motor Control</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;margin:12px;color:#222}
     .row{display:flex;gap:12px;align-items:center;margin:8px 0}
@@ -23,24 +23,21 @@ const char index_html[] = R"rawliteral(
   </style>
 </head>
 <body>
-  <h2>SCADA Lab3 — Pump Station</h2>
+  <h2>SCADA Lab3 — Motor Control</h2>
   <div class="row card">
     <div>
       <div><strong>Measurements</strong></div>
       <div id="meas">
-        <div>Water level: <span id="water_level">--</span> %</div>
-        <div>Pump: <span id="pump_state">--</span></div>
-        <div>Auto pump: <span id="auto_state">--</span></div>
-        <div>Alarm code: <span id="alarm_indc">--</span></div>
+        <div>Temperature: <span id="temperature">--</span> °C</div>
+        <div>Motor power: <span id="motor_power">--</span> %</div>
+        <div>Motor running: <span id="motor_running">--</span></div>
+        <div>PWM: <span id="motor_pwm">--</span></div>
       </div>
     </div>
     <div style="margin-left:20px">
       <div><strong>LEDs / Status</strong></div>
-      <div class="row"><span id="led-on" class="led off"></span> ON</div>
-      <div class="row"><span id="led-off" class="led off"></span> OFF</div>
-      <div class="row"><span id="led-alarm" class="led off"></span> ALARM</div>
-      <div class="row" style="margin-top:8px"><label>Pump</label><button id="btn-toggle">Toggle ON/OFF</button></div>
-      <div class="row" style="margin-top:8px"><label>Auto</label><button id="btn-auto">Toggle AUTO</button></div>
+      <div class="row"><span id="led-in1" class="led off"></span> IN1</div>
+      <div class="row"><span id="led-in2" class="led off"></span> IN2</div>
     </div>
   </div>
 
@@ -54,15 +51,14 @@ async function fetchStatus(){
   try{
     const r = await fetch('/status');
     const j = await r.json();
-    document.getElementById('water_level').textContent = j.water_level.toFixed(1);
-    document.getElementById('pump_state').textContent = j.pump ? 'ON' : 'OFF';
-    document.getElementById('auto_state').textContent = j.auto_pump ? 'ON' : 'OFF';
-    document.getElementById('alarm_indc').textContent = j.alarm_indc;
+    document.getElementById('temperature').textContent = j.temperature.toFixed(1);
+    document.getElementById('motor_power').textContent = j.motor_power;
+    document.getElementById('motor_running').textContent = j.motor_running ? 'ON' : 'OFF';
+    document.getElementById('motor_pwm').textContent = j.pwm;
 
-    // LEDs
-    setLed('led-on', j.onLed);
-    setLed('led-off', j.offLed);
-    setLed('led-alarm', j.alarmLed);
+  // LEDs
+  setLed('led-in1', j.in1);
+  setLed('led-in2', j.in2);
 
   document.getElementById('raw').textContent = JSON.stringify(j, null, 2);
 
@@ -76,29 +72,18 @@ function setLed(id, state){
   } else { el.className='led off'; }
 }
 
-document.getElementById('btn-toggle').addEventListener('click', async ()=>{
-  await fetch('/toggle');
-  setTimeout(fetchStatus,200);
-});
-
-document.getElementById('btn-auto').addEventListener('click', async ()=>{
-  await fetch('/toggle_auto');
-  setTimeout(fetchStatus,200);
-});
-
 // Real-time updates via Server-Sent Events
 if (typeof EventSource !== 'undefined') {
   const es = new EventSource('/events');
   es.onmessage = function(e) {
     try{
       const j = JSON.parse(e.data);
-      document.getElementById('water_level').textContent = j.water_level.toFixed(1);
-      document.getElementById('pump_state').textContent = j.pump ? 'ON' : 'OFF';
-      document.getElementById('auto_state').textContent = j.auto_pump ? 'ON' : 'OFF';
-      document.getElementById('alarm_indc').textContent = j.alarm_indc;
-      setLed('led-on', j.onLed);
-      setLed('led-off', j.offLed);
-      setLed('led-alarm', j.alarmLed);
+  document.getElementById('temperature').textContent = j.temperature.toFixed(1);
+  document.getElementById('motor_power').textContent = j.motor_power;
+  document.getElementById('motor_running').textContent = j.motor_running ? 'ON' : 'OFF';
+  document.getElementById('motor_pwm').textContent = j.pwm;
+  setLed('led-in1', j.in1);
+  setLed('led-in2', j.in2);
       document.getElementById('raw').textContent = JSON.stringify(j, null, 2);
     }catch(err){ console.log(err); }
   };

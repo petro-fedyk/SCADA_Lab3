@@ -5,8 +5,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#include "waterLevelSensor.h"
 #include "logic.h"
+#include "tempSensor.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -40,18 +40,16 @@ void oledPrint()
     display.println("Pump Station");
 
     display.setCursor(0, 12);
-    display.print("Water: ");
-    display.print(water_level, 1);
+    display.print("Temp: ");
+    display.print(temperatureC, 1);
+    display.println(" C");
+
+    display.print("Power: ");
+    display.print(motorPowerPercent);
     display.println(" %");
 
-    display.print("Pump: ");
-    display.println(pumpOn ? "ON" : "OFF");
-
-    display.print("Auto: ");
-    display.println(auto_pump ? "ON" : "OFF");
-
-    display.print("Alarm: ");
-    display.println(alarm_indc);
+    display.print("Motor: ");
+    display.println(motorRunning ? "ON" : "OFF");
 
     display.display();
 }

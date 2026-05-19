@@ -5,17 +5,17 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include "logic.h"
-#include "waterLevelSensor.h"
+#include "tempSensor.h"
 
 // --- WiFi Settings ---
-#define WIFI_SSID "Redmi Note 12 Pro"
-#define WIFI_PASSWORD "12032006"
+// #define WIFI_SSID "Redmi Note 12 Pro"
+// #define WIFI_PASSWORD "12032006"
 
-// #define WIFI_SSID "admin"
-// #define WIFI_PASSWORD "domestos1216"
+#define WIFI_SSID "admin"
+#define WIFI_PASSWORD "domestos1216"
 
 // --- MQTT Broker IP ---
-#define MQTT_SERVER "192.168.71.216" // <-- IP твоєї Ubuntu машини
+#define MQTT_SERVER "192.168.31.159" // <-- IP твоєї Ubuntu машини
 #define MQTT_PORT 1883
 
 WiFiClient espClient;
@@ -89,10 +89,9 @@ void loop_mqtt()
     const char *topic = "scada/lab3/telemetry";
 
     String payload = "{";
-    payload += "\"water_level\":" + String(water_level, 1) + ",";
-    payload += "\"pump\":" + String(pumpOn ? "true" : "false") + ",";
-    payload += "\"auto_pump\":" + String(auto_pump ? "true" : "false") + ",";
-    payload += "\"alarm_indc\":" + String(alarm_indc);
+    payload += "\"temperature\":" + String(temperatureC, 1) + ",";
+    payload += "\"motor_power\":" + String(motorPowerPercent) + ",";
+    payload += "\"motor_running\":" + String(motorRunning ? "true" : "false");
     payload += "}";
 
     client.publish(topic, payload.c_str());
@@ -114,41 +113,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     Serial.print("[MQTT] Message arrived: ");
     Serial.println(msg);
 
-    // Примітивний JSON parse (достатньо для лаби)
-    bool pumpCmdPresent = false;
-
-    if (msg.indexOf("\"auto_pump\":true") >= 0)
-    {
-        auto_pump = true;
-        Serial.println("[MQTT] auto_pump ON");
-    }
-    else if (msg.indexOf("\"auto_pump\":false") >= 0)
-    {
-        auto_pump = false;
-        Serial.println("[MQTT] auto_pump OFF");
-    }
-
-    if (msg.indexOf("\"pump\":true") >= 0)
-    {
-        pumpCmdPresent = true;
-        if (auto_pump)
-            auto_pump = false; // manual override
-        pumpOn = true;
-        Serial.println("[MQTT] Pump turned ON");
-    }
-    else if (msg.indexOf("\"pump\":false") >= 0)
-    {
-        pumpCmdPresent = true;
-        if (auto_pump)
-            auto_pump = false; // manual override
-        pumpOn = false;
-        Serial.println("[MQTT] Pump turned OFF");
-    }
-
-    if (!pumpCmdPresent && msg.indexOf("\"pump\"") >= 0)
-    {
-        Serial.println("[MQTT] Pump command present but not parsed");
-    }
+    // Команди не використовуються у 3-му варіанті
 }
 
 #endif

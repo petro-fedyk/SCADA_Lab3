@@ -6,7 +6,7 @@
 #include <ESP8266WebServer.h>
 #include "indexHtml.h"
 #include "logic.h"
-#include "waterLevelSensor.h"
+#include "tempSensor.h"
 
 ESP8266WebServer server(80);
 // Single SSE client support
@@ -24,13 +24,12 @@ void handleRoot()
 void handleStatus()
 {
     String js = "{";
-    js += "\"water_level\":" + String(water_level, 1) + ",";
-    js += "\"pump\":" + String(pumpOn ? "true" : "false") + ",";
-    js += "\"auto_pump\":" + String(auto_pump ? "true" : "false") + ",";
-    js += "\"alarm_indc\":" + String(alarm_indc) + ",";
-    js += "\"onLed\":" + String(digitalRead(ON_PIN) ? "true" : "false") + ",";
-    js += "\"offLed\":" + String(digitalRead(OFF_PIN) ? "true" : "false") + ",";
-    js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false");
+    js += "\"temperature\":" + String(temperatureC, 1) + ",";
+    js += "\"motor_power\":" + String(motorPowerPercent) + ",";
+    js += "\"motor_running\":" + String(motorRunning ? "true" : "false") + ",";
+    js += "\"pwm\":" + String(motorPwmValue) + ",";
+    js += "\"in1\":" + String(digitalRead(IN1_PIN) ? "true" : "false") + ",";
+    js += "\"in2\":" + String(digitalRead(IN2_PIN) ? "true" : "false");
     js += "}";
 
     server.send(200, "application/json", js);
@@ -52,27 +51,11 @@ void handleEvents()
 }
 
 // Toggle station on/off
-void handleToggle()
-{
-    if (auto_pump)
-        auto_pump = false;
-    pumpOn = !pumpOn;
-    server.send(200, "text/plain", pumpOn ? "ON" : "OFF");
-}
-
-void handleToggleAuto()
-{
-    auto_pump = !auto_pump;
-    server.send(200, "text/plain", auto_pump ? "AUTO" : "MANUAL");
-}
-
 void setup_web()
 {
     server.on("/", HTTP_GET, handleRoot);
     server.on("/status", HTTP_GET, handleStatus);
     server.on("/events", HTTP_GET, handleEvents);
-    server.on("/toggle", HTTP_GET, handleToggle);
-    server.on("/toggle_auto", HTTP_GET, handleToggleAuto);
     server.begin();
     Serial.println("[WEB] Server started");
 }
@@ -96,13 +79,12 @@ void web_loop()
             lastSseMs = now;
             // build JSON same as handleStatus
             String js = "{";
-            js += "\"water_level\":" + String(water_level, 1) + ",";
-            js += "\"pump\":" + String(pumpOn ? "true" : "false") + ",";
-            js += "\"auto_pump\":" + String(auto_pump ? "true" : "false") + ",";
-            js += "\"alarm_indc\":" + String(alarm_indc) + ",";
-            js += "\"onLed\":" + String(digitalRead(ON_PIN) ? "true" : "false") + ",";
-            js += "\"offLed\":" + String(digitalRead(OFF_PIN) ? "true" : "false") + ",";
-            js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false");
+            js += "\"temperature\":" + String(temperatureC, 1) + ",";
+            js += "\"motor_power\":" + String(motorPowerPercent) + ",";
+            js += "\"motor_running\":" + String(motorRunning ? "true" : "false") + ",";
+            js += "\"pwm\":" + String(motorPwmValue) + ",";
+            js += "\"in1\":" + String(digitalRead(IN1_PIN) ? "true" : "false") + ",";
+            js += "\"in2\":" + String(digitalRead(IN2_PIN) ? "true" : "false");
             js += "}";
 
             // send as SSE data: line starting with "data: " and ending with double newline
