@@ -27,6 +27,7 @@ void handleStatus()
     js += "\"temperature\":" + String(temperatureC, 2) + ",";
     js += "\"mode\":\"" + String(modeText()) + "\",";
     js += "\"powerPercent\":" + String(powerPercent) + ",";
+    js += "\"motorSpeed\":" + String(motorSpeedPercent) + ",";
     js += "\"relayOn\":" + String(relayOn ? "true" : "false") + ",";
     js += "\"redLed\":" + String(redLedOn ? "true" : "false") + ",";
     js += "\"yellowLed\":" + String(yellowLedOn ? "true" : "false") + "";
@@ -81,6 +82,7 @@ void web_loop()
             js += "\"temperature\":" + String(temperatureC, 2) + ",";
             js += "\"mode\":\"" + String(modeText()) + "\",";
             js += "\"powerPercent\":" + String(powerPercent) + ",";
+            js += "\"motorSpeed\":" + String(motorSpeedPercent) + ",";
             js += "\"relayOn\":" + String(relayOn ? "true" : "false") + ",";
             js += "\"redLed\":" + String(redLedOn ? "true" : "false") + ",";
             js += "\"yellowLed\":" + String(yellowLedOn ? "true" : "false") + "";

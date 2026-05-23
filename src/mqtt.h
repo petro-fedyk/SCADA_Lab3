@@ -91,6 +91,7 @@ void loop_mqtt()
     String payload = "{";
     payload += "\"temperature\":" + String(temperatureC, 2) + ",";
     payload += "\"powerPercent\":" + String(powerPercent) + ",";
+    payload += "\"motorSpeed\":" + String(motorSpeedPercent) + ",";
     payload += "\"mode\":\"" + String(modeText()) + "\"";
     payload += "}";
 

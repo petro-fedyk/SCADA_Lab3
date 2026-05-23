@@ -83,7 +83,7 @@ void oledPrint()
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0, 0);
-    display.println("Room Temp Monitor");
+    display.println("Washing Machine");
 
     display.setCursor(0, 12);
     display.print("Mode: ");
@@ -93,12 +93,12 @@ void oledPrint()
     display.print(temperatureC, 1);
     display.println(" C");
 
-    display.print("Power: ");
-    display.print(powerPercent);
+    display.print("Motor: ");
+    display.print(motorSpeedPercent);
     display.println(" %");
 
     display.setCursor(0, 42);
-    display.print("Relay: ");
+    display.print("Motor: ");
     display.print(relayOn ? "ON" : "OFF");
 
     display.setCursor(74, 42);

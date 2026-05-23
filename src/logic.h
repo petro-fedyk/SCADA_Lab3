@@ -3,12 +3,16 @@
 #include <Arduino.h>
 #include "tempSensor.h"
 
-#define RELAY_PIN 14
-#define LED_RED_PIN 15
-#define LED_YELLOW_PIN 13
+#define IN1_PIN 13
+#define IN2_PIN 14
+#define ENA_PIN 12
 
-const float TEMP_HIGH_C = 28.0;
-const float TEMP_MID_C = 18.0;
+#define LED_RED_PIN 15
+#define LED_YELLOW_PIN 2
+
+const float WASH_TARGET_TEMP_C = 30.0;
+const int BASE_SPEED_PERCENT = 50;
+const int SPEED_BOOST_PER_DEGREE = 5;
 const float TEMP_SENSOR_INVALID_C = -100.0;
 
 const unsigned long LOGIC_LOOP_DELAY_MS = 150; // ms delay at end of logic loop
@@ -22,7 +26,8 @@ enum WorkMode
 
 WorkMode currentMode = MODE_OFF;
 int powerPercent = 0;
-bool relayOn = false;
+int motorSpeedPercent = 0;
+bool relayOn = false; // kept for UI compatibility: true when motor running
 bool redLedOn = false;
 bool yellowLedOn = false;
 
@@ -41,19 +46,35 @@ const char *modeText()
 
 void applyOutputs()
 {
-    // Relay is active-low: LOW closes, HIGH opens
-    digitalWrite(RELAY_PIN, relayOn ? LOW : HIGH);
+    int pwmValue = map(motorSpeedPercent, 0, 100, 0, 1023);
+
+    if (motorSpeedPercent > 0)
+    {
+        digitalWrite(IN1_PIN, HIGH);
+        digitalWrite(IN2_PIN, LOW);
+    }
+    else
+    {
+        digitalWrite(IN1_PIN, LOW);
+        digitalWrite(IN2_PIN, LOW);
+    }
+
+    analogWrite(ENA_PIN, pwmValue);
+
     digitalWrite(LED_RED_PIN, redLedOn ? HIGH : LOW);
     digitalWrite(LED_YELLOW_PIN, yellowLedOn ? HIGH : LOW);
 }
 
 void setup_logic()
 {
-    pinMode(RELAY_PIN, OUTPUT);
+    pinMode(IN1_PIN, OUTPUT);
+    pinMode(IN2_PIN, OUTPUT);
+    pinMode(ENA_PIN, OUTPUT);
     pinMode(LED_RED_PIN, OUTPUT);
     pinMode(LED_YELLOW_PIN, OUTPUT);
 
     relayOn = false;
+    motorSpeedPercent = 0;
     redLedOn = false;
     yellowLedOn = false;
     applyOutputs();
@@ -66,34 +87,43 @@ void loop_logic()
     if (temperatureC < TEMP_SENSOR_INVALID_C)
     {
         currentMode = MODE_OFF;
+        motorSpeedPercent = 0;
         powerPercent = 0;
         relayOn = false;
         redLedOn = false;
         yellowLedOn = false;
-    }
-    else if (temperatureC > TEMP_HIGH_C)
-    {
-        currentMode = MODE_FULL;
-        powerPercent = 80;
-        relayOn = true;
-        redLedOn = true;
-        yellowLedOn = false;
-    }
-    else if (temperatureC >= TEMP_MID_C)
-    {
-        currentMode = MODE_HALF;
-        powerPercent = 50;
-        relayOn = false;
-        redLedOn = false;
-        yellowLedOn = true;
     }
     else
     {
-        currentMode = MODE_OFF;
-        powerPercent = 0;
-        relayOn = false;
-        redLedOn = false;
-        yellowLedOn = false;
+        float delta = WASH_TARGET_TEMP_C - temperatureC;
+        int speed = BASE_SPEED_PERCENT;
+        if (delta > 0)
+        {
+            speed += (int)round(delta * SPEED_BOOST_PER_DEGREE);
+        }
+
+        motorSpeedPercent = constrain(speed, 0, 100);
+        powerPercent = motorSpeedPercent;
+        relayOn = motorSpeedPercent > 0;
+
+        if (motorSpeedPercent >= 75)
+        {
+            currentMode = MODE_FULL;
+            redLedOn = true;
+            yellowLedOn = false;
+        }
+        else if (motorSpeedPercent > 0)
+        {
+            currentMode = MODE_HALF;
+            redLedOn = false;
+            yellowLedOn = true;
+        }
+        else
+        {
+            currentMode = MODE_OFF;
+            redLedOn = false;
+            yellowLedOn = false;
+        }
     }
 
     applyOutputs();
@@ -102,8 +132,8 @@ void loop_logic()
     Serial.print(temperatureC, 2);
     Serial.print(" C | Mode=");
     Serial.print(modeText());
-    Serial.print(" | Power=");
-    Serial.print(powerPercent);
+    Serial.print(" | Motor=");
+    Serial.print(motorSpeedPercent);
     Serial.print("% | Relay=");
     Serial.print(relayOn ? "ON" : "OFF");
     Serial.print(" | Red=");

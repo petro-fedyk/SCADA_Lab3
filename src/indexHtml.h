@@ -7,7 +7,7 @@ const char index_html[] = R"rawliteral(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SCADA Lab3 — Temperature Monitor</title>
+  <title>SCADA Lab3 — Washing Machine</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;margin:12px;color:#222}
     .row{display:flex;gap:12px;align-items:center;margin:8px 0}
@@ -25,23 +25,23 @@ const char index_html[] = R"rawliteral(
   </style>
 </head>
 <body>
-  <h2>SCADA Lab3 — Temperature Monitor</h2>
+  <h2>SCADA Lab3 — Washing Machine</h2>
   <div class="row card">
     <div>
       <div><strong>Measurements</strong></div>
       <div id="meas">
         <div>Temperature: <span id="temperature">--</span> °C</div>
         <div>Mode: <span id="mode">--</span></div>
-        <div>Power emulation: <span id="powerPercent">--</span> %</div>
+  <div>Motor speed: <span id="motorSpeed">--</span> %</div>
       </div>
       <div class="row" style="margin-top:10px">
-        <label>Power slider</label>
-        <input id="powerSlider" type="range" min="0" max="100" value="0" disabled>
+  <label>Motor speed</label>
+  <input id="motorSlider" type="range" min="0" max="100" value="0" disabled>
       </div>
     </div>
     <div style="margin-left:20px">
       <div><strong>Indicators</strong></div>
-      <div class="row"><span id="led-relay" class="led off"></span> Relay (GPIO14)</div>
+  <div class="row"><span id="led-relay" class="led off"></span> Motor enabled</div>
       <div class="row"><span id="led-red" class="led off"></span> Red indicator</div>
       <div class="row"><span id="led-yellow" class="led off"></span> Yellow indicator</div>
     </div>
@@ -59,8 +59,8 @@ async function fetchStatus(){
     const j = await r.json();
   document.getElementById('temperature').textContent = j.temperature.toFixed(2);
   document.getElementById('mode').textContent = j.mode;
-  document.getElementById('powerPercent').textContent = j.powerPercent;
-  document.getElementById('powerSlider').value = j.powerPercent;
+  document.getElementById('motorSpeed').textContent = j.motorSpeed ?? j.powerPercent;
+  document.getElementById('motorSlider').value = j.motorSpeed ?? j.powerPercent;
 
   setLed('led-relay', j.relayOn);
   setLed('led-red', j.redLed, 'red');
@@ -90,8 +90,8 @@ if (typeof EventSource !== 'undefined') {
       const j = JSON.parse(e.data);
   document.getElementById('temperature').textContent = j.temperature.toFixed(2);
   document.getElementById('mode').textContent = j.mode;
-  document.getElementById('powerPercent').textContent = j.powerPercent;
-  document.getElementById('powerSlider').value = j.powerPercent;
+  document.getElementById('motorSpeed').textContent = j.motorSpeed ?? j.powerPercent;
+  document.getElementById('motorSlider').value = j.motorSpeed ?? j.powerPercent;
   setLed('led-relay', j.relayOn);
   setLed('led-red', j.redLed, 'red');
   setLed('led-yellow', j.yellowLed, 'yellow');
