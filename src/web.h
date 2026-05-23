@@ -6,7 +6,6 @@
 #include <ESP8266WebServer.h>
 #include "indexHtml.h"
 #include "logic.h"
-#include "powerSensor.h"
 #include "tempSensor.h"
 
 ESP8266WebServer server(80);
@@ -26,15 +25,11 @@ void handleStatus()
 {
     String js = "{";
     js += "\"temperature\":" + String(temperatureC, 2) + ",";
-    js += "\"voltage\":" + String(voltage, 2) + ",";
-    js += "\"current\":" + String(current, 2) + ",";
-    js += "\"power\":" + String(power, 2) + ",";
-    js += "\"battery\":" + String(batteryLevel) + ",";
-    js += "\"stationOn\":" + String(stationOn ? "true" : "false") + ",";
-    js += "\"onLed\":" + String(digitalRead(ON_PIN) ? "true" : "false") + ",";
-    js += "\"offLed\":" + String(digitalRead(OFF_PIN) ? "true" : "false") + ",";
-    js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false") + ",";
-    js += "\"thresholds\":{\"battery\":" + String(alarmBatteryPercent) + ",\"voltage\":" + String(alarmVoltageV,2) + ",\"current\":" + String(alarmCurrentmA,1) + "}";
+    js += "\"mode\":\"" + String(modeText()) + "\",";
+    js += "\"powerPercent\":" + String(powerPercent) + ",";
+    js += "\"relayOn\":" + String(relayOn ? "true" : "false") + ",";
+    js += "\"redLed\":" + String(redLedOn ? "true" : "false") + ",";
+    js += "\"yellowLed\":" + String(yellowLedOn ? "true" : "false") + "";
     js += "}";
 
     server.send(200, "application/json", js);
@@ -55,49 +50,11 @@ void handleEvents()
     sseClientActive = true;
 }
 
-// Toggle station on/off
-void handleToggle()
-{
-    stationOn = !stationOn;
-    server.send(200, "text/plain", stationOn ? "ON" : "OFF");
-}
-
-// Set thresholds via POST (form data: battery, voltage, current)
-void handleSettings()
-{
-    if (server.method() != HTTP_POST)
-    {
-        server.send(405, "text/plain", "Method Not Allowed");
-        return;
-    }
-
-    if (server.hasArg("battery"))
-    {
-        int b = server.arg("battery").toInt();
-        if (b >= 0 && b <= 100)
-            alarmBatteryPercent = (uint8_t)b;
-    }
-    if (server.hasArg("voltage"))
-    {
-        float v = server.arg("voltage").toFloat();
-        alarmVoltageV = v;
-    }
-    if (server.hasArg("current"))
-    {
-        float c = server.arg("current").toFloat();
-        alarmCurrentmA = c;
-    }
-
-    server.send(200, "text/plain", "OK");
-}
-
 void setup_web()
 {
     server.on("/", HTTP_GET, handleRoot);
     server.on("/status", HTTP_GET, handleStatus);
     server.on("/events", HTTP_GET, handleEvents);
-    server.on("/toggle", HTTP_GET, handleToggle);
-    server.on("/settings", HTTP_POST, handleSettings);
     server.begin();
     Serial.println("[WEB] Server started");
 }
@@ -122,15 +79,11 @@ void web_loop()
             // build JSON same as handleStatus
             String js = "{";
             js += "\"temperature\":" + String(temperatureC, 2) + ",";
-            js += "\"voltage\":" + String(voltage, 2) + ",";
-            js += "\"current\":" + String(current, 2) + ",";
-            js += "\"power\":" + String(power, 2) + ",";
-            js += "\"battery\":" + String(batteryLevel) + ",";
-            js += "\"stationOn\":" + String(stationOn ? "true" : "false") + ",";
-            js += "\"onLed\":" + String(digitalRead(ON_PIN) ? "true" : "false") + ",";
-            js += "\"offLed\":" + String(digitalRead(OFF_PIN) ? "true" : "false") + ",";
-            js += "\"alarmLed\":" + String(digitalRead(ALARM_PIN) ? "true" : "false") + ",";
-            js += "\"thresholds\":{\"battery\":" + String(alarmBatteryPercent) + ",\"voltage\":" + String(alarmVoltageV,2) + ",\"current\":" + String(alarmCurrentmA,1) + "}";
+            js += "\"mode\":\"" + String(modeText()) + "\",";
+            js += "\"powerPercent\":" + String(powerPercent) + ",";
+            js += "\"relayOn\":" + String(relayOn ? "true" : "false") + ",";
+            js += "\"redLed\":" + String(redLedOn ? "true" : "false") + ",";
+            js += "\"yellowLed\":" + String(yellowLedOn ? "true" : "false") + "";
             js += "}";
 
             // send as SSE data: line starting with "data: " and ending with double newline

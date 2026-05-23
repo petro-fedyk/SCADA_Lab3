@@ -1,145 +1,115 @@
 #ifndef LOGIC_H
 #define LOGIC_H
 #include <Arduino.h>
-#include "powerSensor.h"
 #include "tempSensor.h"
 
-#define BTN_PIN 14
-#define ON_PIN 15
-#define OFF_PIN 13
-#define ALARM_PIN 12
+#define RELAY_PIN 14
+#define LED_RED_PIN 15
+#define LED_YELLOW_PIN 13
 
-// Timing and state constants (replace magic numbers)
-const unsigned long DEBOUNCE_DELAY_MS = 50;        // ms for button debounce
-const unsigned long ALARM_BLINK_INTERVAL_MS = 500; // ms interval for alarm blinking
-const unsigned long LOGIC_LOOP_DELAY_MS = 150;     // ms delay at end of logic loop
+const float TEMP_HIGH_C = 28.0;
+const float TEMP_MID_C = 18.0;
+const float TEMP_SENSOR_INVALID_C = -100.0;
 
-// Button active/released states (INPUT_PULLUP wiring)
-const int BTN_ACTIVE_STATE = LOW;
-const int BTN_RELEASED_STATE = HIGH;
+const unsigned long LOGIC_LOOP_DELAY_MS = 150; // ms delay at end of logic loop
 
-// Alarm logic thresholds (extract magic numbers here)
-// Alarm logic thresholds (configurable at runtime)
-uint8_t alarmBatteryPercent = 10;   // if batteryLevel < this → alarm
-float alarmVoltageV = 4.2;         // voltage threshold in volts
-float alarmCurrentmA = 1000.0;     // current threshold in milliamps
-float alarmTempC = 40.0;           // temperature threshold in °C
+enum WorkMode
+{
+    MODE_OFF = 0,
+    MODE_HALF = 1,
+    MODE_FULL = 2
+};
 
-bool alarm = false;
+WorkMode currentMode = MODE_OFF;
+int powerPercent = 0;
+bool relayOn = false;
+bool redLedOn = false;
+bool yellowLedOn = false;
+
+const char *modeText()
+{
+    switch (currentMode)
+    {
+    case MODE_FULL:
+        return "FULL";
+    case MODE_HALF:
+        return "HALF";
+    default:
+        return "OFF";
+    }
+}
+
+void applyOutputs()
+{
+    // Relay is active-low: LOW closes, HIGH opens
+    digitalWrite(RELAY_PIN, relayOn ? LOW : HIGH);
+    digitalWrite(LED_RED_PIN, redLedOn ? HIGH : LOW);
+    digitalWrite(LED_YELLOW_PIN, yellowLedOn ? HIGH : LOW);
+}
 
 void setup_logic()
 {
-    pinMode(BTN_PIN, INPUT_PULLUP);
-    pinMode(ON_PIN, OUTPUT);
-    pinMode(OFF_PIN, OUTPUT);
-    pinMode(ALARM_PIN, OUTPUT);
+    pinMode(RELAY_PIN, OUTPUT);
+    pinMode(LED_RED_PIN, OUTPUT);
+    pinMode(LED_YELLOW_PIN, OUTPUT);
 
-    digitalWrite(ON_PIN, LOW);
-    digitalWrite(OFF_PIN, HIGH);
-    digitalWrite(ALARM_PIN, LOW);
+    relayOn = false;
+    redLedOn = false;
+    yellowLedOn = false;
+    applyOutputs();
 
     Serial.println("[LOGIC] Setup complete");
 }
 
-bool stationOn = false;
-int lastReading = BTN_RELEASED_STATE;
-int stableState = BTN_RELEASED_STATE;
-unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = DEBOUNCE_DELAY_MS;
-
-// Допоміжна змінна для виявлення перехідного фронту (HIGH -> LOW)
-int prevStableState = HIGH;
-// Кнопка "застреленa" після натискання, поки не відпущена
-bool buttonArmed = true;
-
-unsigned long alarmBlinkLast = 0;
-bool alarmLedState = false;
-
 void loop_logic()
 {
-    int reading = digitalRead(BTN_PIN);
-
-    // Якщо стан змінився - перезапускаємо debounce таймер
-    if (reading != lastReading)
+    if (temperatureC < TEMP_SENSOR_INVALID_C)
     {
-        lastDebounceTime = millis();
+        currentMode = MODE_OFF;
+        powerPercent = 0;
+        relayOn = false;
+        redLedOn = false;
+        yellowLedOn = false;
     }
-
-    // Якщо стабільний новий стан довше ніж debounceDelay
-    if ((millis() - lastDebounceTime) > debounceDelay)
+    else if (temperatureC > TEMP_HIGH_C)
     {
-        if (reading != stableState)
-        {
-            stableState = reading;
-
-            // Переключаємо лише на чистому переході RELEASED -> ACTIVE і тільки якщо кнопка "застрелена" (re-armed)
-            if (stableState == BTN_ACTIVE_STATE && prevStableState == BTN_RELEASED_STATE && buttonArmed)
-            {
-                stationOn = !stationOn;
-                buttonArmed = false; // чекаємо відпускання
-                Serial.print("[BUTTON] Press detected -> Station state: ");
-                Serial.println(stationOn ? "ON" : "OFF");
-            }
-
-            // Коли кнопка відпущена (RELEASED) — реармимо її для наступного натискання
-            if (stableState == BTN_RELEASED_STATE)
-            {
-                buttonArmed = true;
-            }
-
-            prevStableState = stableState;
-        }
+        currentMode = MODE_FULL;
+        powerPercent = 80;
+        relayOn = true;
+        redLedOn = true;
+        yellowLedOn = false;
     }
-
-    lastReading = reading;
-
-    // --- Керування станом ---
-    if (stationOn)
+    else if (temperatureC >= TEMP_MID_C)
     {
-        digitalWrite(ON_PIN, HIGH);
-        digitalWrite(OFF_PIN, LOW);
+        currentMode = MODE_HALF;
+        powerPercent = 50;
+        relayOn = false;
+        redLedOn = false;
+        yellowLedOn = true;
     }
     else
     {
-        digitalWrite(ON_PIN, LOW);
-        digitalWrite(OFF_PIN, HIGH);
+        currentMode = MODE_OFF;
+        powerPercent = 0;
+        relayOn = false;
+        redLedOn = false;
+        yellowLedOn = false;
     }
 
-    // --- Логіка аварії ---
-    alarm = false; // скидання перед перевірками
-    if (batteryLevel < alarmBatteryPercent)
-        alarm = true;
-    if (voltage > alarmVoltageV && current > alarmCurrentmA)
-        alarm = true;
-    // temperature-based alarm
-    if (temperatureC > alarmTempC)
-        alarm = true;
+    applyOutputs();
 
-    if (alarm)
-    {
-        unsigned long now = millis();
-        if (now - alarmBlinkLast >= ALARM_BLINK_INTERVAL_MS)
-        {
-            alarmBlinkLast = now;
-            alarmLedState = !alarmLedState;
-            digitalWrite(ALARM_PIN, alarmLedState ? HIGH : LOW);
-        }
-    }
-    else
-    {
-        alarmLedState = false;
-        digitalWrite(ALARM_PIN, LOW);
-    }
-
-    // --- Статус логування ---
-    Serial.print("[STATUS] BTN=");
-    Serial.print(reading == LOW ? "PRESSED" : "RELEASED");
-    Serial.print(" | ON_PIN=");
-    Serial.print(digitalRead(ON_PIN));
-    Serial.print(" | OFF_PIN=");
-    Serial.print(digitalRead(OFF_PIN));
-    Serial.print(" | ALARM_PIN=");
-    Serial.println(digitalRead(ALARM_PIN));
+    Serial.print("[STATUS] Temp=");
+    Serial.print(temperatureC, 2);
+    Serial.print(" C | Mode=");
+    Serial.print(modeText());
+    Serial.print(" | Power=");
+    Serial.print(powerPercent);
+    Serial.print("% | Relay=");
+    Serial.print(relayOn ? "ON" : "OFF");
+    Serial.print(" | Red=");
+    Serial.print(redLedOn ? "ON" : "OFF");
+    Serial.print(" | Yellow=");
+    Serial.println(yellowLedOn ? "ON" : "OFF");
 
     delay(LOGIC_LOOP_DELAY_MS);
 }

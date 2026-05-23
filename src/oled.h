@@ -5,8 +5,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#include "powerSensor.h"
 #include "tempSensor.h"
+#include "logic.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -30,50 +30,86 @@ void oled_init()
     display.display();
 }
 
-void oledPrint()
+void drawPowerBar(int percent)
 {
-    // update display with latest readings
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(0, 0);
-    display.println("Power Station");
-
-    display.setCursor(0, 10);
-    display.print("Voltage: ");
-    display.println(voltage, 2);
-
-    display.print("Current: ");
-    display.println(current, 2);
-
-    display.print("Power: ");
-    display.println(power, 2);
-
-    display.print("Temperature: ");
-    display.println(temperatureC, 2);
-
-    // --- Battery progress bar (bottom of screen, below temperature) ---
-    // Draw percentage label just above the bar
     int barMargin = 2;
     int barHeight = 10;
     int barX = barMargin;
     int barW = SCREEN_WIDTH - barMargin * 2;
-    int barY = SCREEN_HEIGHT - barHeight - 4; // leave small bottom margin
+    int barY = SCREEN_HEIGHT - barHeight - 2;
 
-    // Percentage text above the bar
-    display.setCursor(0, barY - 10);
-    display.print("Battery: ");
-    display.print((int)batteryLevel);
-    display.println(" %");
-
-    // Draw border
     display.drawRect(barX, barY, barW, barHeight, WHITE);
-    // Fill according to batteryLevel (0..100)
-    int fillW = map((int)batteryLevel, 0, 100, 0, barW - 2);
+    int fillW = map(percent, 0, 100, 0, barW - 2);
     if (fillW > 0)
     {
         display.fillRect(barX + 1, barY + 1, fillW, barHeight - 2, WHITE);
     }
+}
+
+void drawMotorAnimation(int x, int y)
+{
+    const int radius = 8;
+    uint8_t frame = (millis() / 250) % 4;
+
+    display.drawCircle(x, y, radius, WHITE);
+
+    if (frame == 0)
+    {
+        display.drawLine(x, y - radius, x, y + radius, WHITE);
+        display.drawLine(x - radius, y, x + radius, y, WHITE);
+    }
+    else if (frame == 1)
+    {
+        display.drawLine(x - radius, y - radius, x + radius, y + radius, WHITE);
+        display.drawLine(x - radius, y + radius, x + radius, y - radius, WHITE);
+    }
+    else if (frame == 2)
+    {
+        display.drawLine(x, y - radius, x, y + radius, WHITE);
+        display.drawLine(x - radius, y, x + radius, y, WHITE);
+        display.drawCircle(x, y, 2, WHITE);
+    }
+    else
+    {
+        display.drawLine(x - radius, y - radius, x + radius, y + radius, WHITE);
+        display.drawLine(x - radius, y + radius, x + radius, y - radius, WHITE);
+        display.drawCircle(x, y, 2, WHITE);
+    }
+}
+
+void oledPrint()
+{
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0, 0);
+    display.println("Room Temp Monitor");
+
+    display.setCursor(0, 12);
+    display.print("Mode: ");
+    display.println(modeText());
+
+    display.print("Temp: ");
+    display.print(temperatureC, 1);
+    display.println(" C");
+
+    display.print("Power: ");
+    display.print(powerPercent);
+    display.println(" %");
+
+    display.setCursor(0, 42);
+    display.print("Relay: ");
+    display.print(relayOn ? "ON" : "OFF");
+
+    display.setCursor(74, 42);
+    display.print("R/Y");
+    if (redLedOn)
+        display.fillCircle(92, 46, 3, WHITE);
+    if (yellowLedOn)
+        display.drawCircle(104, 46, 3, WHITE);
+
+    drawPowerBar(powerPercent);
+    drawMotorAnimation(112, 20);
 
     display.display();
 }

@@ -5,18 +5,17 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include "logic.h"
-#include "powerSensor.h"
 #include "tempSensor.h"
 
 // --- WiFi Settings ---
-#define WIFI_SSID "Redmi Note 12 Pro"
-#define WIFI_PASSWORD "12032006"
+// #define WIFI_SSID "Redmi Note 12 Pro"
+// #define WIFI_PASSWORD "12032006"
 
-// #define WIFI_SSID "admin"
-// #define WIFI_PASSWORD "domestos1216"
+#define WIFI_SSID "admin"
+#define WIFI_PASSWORD "domestos1216"
 
 // --- MQTT Broker IP ---
-#define MQTT_SERVER "192.168.10.216" // <-- IP твоєї Ubuntu машини
+#define MQTT_SERVER "192.168.31.114"
 #define MQTT_PORT 1883
 
 WiFiClient espClient;
@@ -87,18 +86,12 @@ void loop_mqtt()
     client.loop();
 
     // Build JSON payload and publish to test topic
-    const char *topic = "scada/lab3/test";
-
-    // Use the alarm state computed by logic (loop_logic sets `alarm`)
-    bool alarmFlag = alarm;
+    const char *topic = "scada/lab3/telemetry";
 
     String payload = "{";
     payload += "\"temperature\":" + String(temperatureC, 2) + ",";
-    payload += "\"voltage\":" + String(voltage, 2) + ",";
-    payload += "\"current\":" + String(current, 2) + ",";
-    payload += "\"power\":" + String(power, 2) + ",";
-    payload += "\"battery\":" + String(batteryLevel) + ",";
-    payload += "\"alarm\":" + String(alarmFlag ? "true" : "false");
+    payload += "\"powerPercent\":" + String(powerPercent) + ",";
+    payload += "\"mode\":\"" + String(modeText()) + "\"";
     payload += "}";
 
     client.publish(topic, payload.c_str());
@@ -120,17 +113,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length)
     Serial.print("[MQTT] Message arrived: ");
     Serial.println(msg);
 
-    // Примітивний JSON parse (достатньо для лаби)
-    if (msg.indexOf("\"station\":true") >= 0)
-    {
-        stationOn = true;
-        Serial.println("[MQTT] Station turned ON");
-    }
-    else if (msg.indexOf("\"station\":false") >= 0)
-    {
-        stationOn = false;
-        Serial.println("[MQTT] Station turned OFF");
-    }
+    // Commands are optional for this lab variant
 }
 
 #endif
