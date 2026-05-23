@@ -14,7 +14,7 @@ void setup()
   ina226_init(I2C_ADDRESS);
   Wire.begin();
   oled_init();
-  ds18b20_init();
+  dht22_init();
   setup_logic();
   setup_mqtt();
   setup_web();

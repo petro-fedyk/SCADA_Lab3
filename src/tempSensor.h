@@ -2,28 +2,34 @@
 #define TEMP_SENSOR_H
 #include <Arduino.h>
 
-#include <OneWire.h>
-#include <DallasTemperature.h>
+#include <DHT.h>
 
-#define ONE_WIRE_BUS 0
+#define DHT_PIN 0
+#define DHT_TYPE DHT22
 
 float temperatureC = 0.0;
+float humidityPct = 0.0;
 
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
+DHT dht(DHT_PIN, DHT_TYPE);
 
-void ds18b20_init()
+void dht22_init()
 {
-    sensors.begin();
+    dht.begin();
 }
 
 void read_temperature()
 {
-    sensors.requestTemperatures();
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    if (!isnan(t))
+        temperatureC = t;
+    if (!isnan(h))
+        humidityPct = h;
 
-    temperatureC = sensors.getTempCByIndex(0);
     Serial.print("Celsius temperature: ");
     Serial.println(temperatureC);
+    Serial.print("Humidity: ");
+    Serial.println(humidityPct);
 }
 
 #endif
