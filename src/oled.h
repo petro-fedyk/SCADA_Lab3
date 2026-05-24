@@ -83,22 +83,22 @@ void oledPrint()
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0, 0);
-    display.println("Washing Machine");
+    display.println("Water Clarity");
 
     display.setCursor(0, 12);
-    display.print("Mode: ");
-    display.println(modeText());
-
     display.print("Temp: ");
     display.print(temperatureC, 1);
     display.println(" C");
 
-    display.print("Motor: ");
-    display.print(motorSpeedPercent);
+    display.print("pH: ");
+    display.println(waterPh, 2);
+
+    display.print("Clarity: ");
+    display.print(waterClarity, 0);
     display.println(" %");
 
     display.setCursor(0, 42);
-    display.print("Motor: ");
+    display.print("Pump: ");
     display.print(relayOn ? "ON" : "OFF");
 
     display.setCursor(74, 42);

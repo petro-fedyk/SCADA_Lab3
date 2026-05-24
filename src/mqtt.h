@@ -90,9 +90,10 @@ void loop_mqtt()
 
     String payload = "{";
     payload += "\"temperature\":" + String(temperatureC, 2) + ",";
-    payload += "\"powerPercent\":" + String(powerPercent) + ",";
-    payload += "\"motorSpeed\":" + String(motorSpeedPercent) + ",";
-    payload += "\"mode\":\"" + String(modeText()) + "\"";
+    payload += "\"ph\":" + String(waterPh, 2) + ",";
+    payload += "\"clarity\":" + String(waterClarity, 1) + ",";
+    payload += "\"pumpOn\":" + String(relayOn ? "true" : "false") + ",";
+    payload += "\"pumpPower\":" + String(motorSpeedPercent);
     payload += "}";
 
     client.publish(topic, payload.c_str());

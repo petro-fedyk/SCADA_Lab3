@@ -10,9 +10,6 @@
 #define LED_RED_PIN 15
 #define LED_YELLOW_PIN 2
 
-const float WASH_TARGET_TEMP_C = 30.0;
-const int BASE_SPEED_PERCENT = 50;
-const int SPEED_BOOST_PER_DEGREE = 5;
 const float TEMP_SENSOR_INVALID_C = -100.0;
 
 const unsigned long LOGIC_LOOP_DELAY_MS = 150; // ms delay at end of logic loop
@@ -30,6 +27,12 @@ int motorSpeedPercent = 0;
 bool relayOn = false; // kept for UI compatibility: true when motor running
 bool redLedOn = false;
 bool yellowLedOn = false;
+
+int pumpPercentFromClarity(float clarity)
+{
+    int pump = (int)round(100.0 - clarity);
+    return constrain(pump, 0, 100);
+}
 
 const char *modeText()
 {
@@ -95,18 +98,11 @@ void loop_logic()
     }
     else
     {
-        float delta = WASH_TARGET_TEMP_C - temperatureC;
-        int speed = BASE_SPEED_PERCENT;
-        if (delta > 0)
-        {
-            speed += (int)round(delta * SPEED_BOOST_PER_DEGREE);
-        }
-
-        motorSpeedPercent = constrain(speed, 0, 100);
+        motorSpeedPercent = pumpPercentFromClarity(waterClarity);
         powerPercent = motorSpeedPercent;
         relayOn = motorSpeedPercent > 0;
 
-        if (motorSpeedPercent >= 75)
+        if (motorSpeedPercent >= 70)
         {
             currentMode = MODE_FULL;
             redLedOn = true;
@@ -132,6 +128,11 @@ void loop_logic()
     Serial.print(temperatureC, 2);
     Serial.print(" C | Mode=");
     Serial.print(modeText());
+    Serial.print(" | pH=");
+    Serial.print(waterPh, 2);
+    Serial.print(" | Clarity=");
+    Serial.print(waterClarity, 1);
+    Serial.print("%");
     Serial.print(" | Motor=");
     Serial.print(motorSpeedPercent);
     Serial.print("% | Relay=");

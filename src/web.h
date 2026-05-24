@@ -25,10 +25,10 @@ void handleStatus()
 {
     String js = "{";
     js += "\"temperature\":" + String(temperatureC, 2) + ",";
-    js += "\"mode\":\"" + String(modeText()) + "\",";
-    js += "\"powerPercent\":" + String(powerPercent) + ",";
-    js += "\"motorSpeed\":" + String(motorSpeedPercent) + ",";
-    js += "\"relayOn\":" + String(relayOn ? "true" : "false") + ",";
+    js += "\"ph\":" + String(waterPh, 2) + ",";
+    js += "\"clarity\":" + String(waterClarity, 1) + ",";
+    js += "\"pumpPower\":" + String(motorSpeedPercent) + ",";
+    js += "\"pumpOn\":" + String(relayOn ? "true" : "false") + ",";
     js += "\"redLed\":" + String(redLedOn ? "true" : "false") + ",";
     js += "\"yellowLed\":" + String(yellowLedOn ? "true" : "false") + "";
     js += "}";
@@ -80,10 +80,10 @@ void web_loop()
             // build JSON same as handleStatus
             String js = "{";
             js += "\"temperature\":" + String(temperatureC, 2) + ",";
-            js += "\"mode\":\"" + String(modeText()) + "\",";
-            js += "\"powerPercent\":" + String(powerPercent) + ",";
-            js += "\"motorSpeed\":" + String(motorSpeedPercent) + ",";
-            js += "\"relayOn\":" + String(relayOn ? "true" : "false") + ",";
+            js += "\"ph\":" + String(waterPh, 2) + ",";
+            js += "\"clarity\":" + String(waterClarity, 1) + ",";
+            js += "\"pumpPower\":" + String(motorSpeedPercent) + ",";
+            js += "\"pumpOn\":" + String(relayOn ? "true" : "false") + ",";
             js += "\"redLed\":" + String(redLedOn ? "true" : "false") + ",";
             js += "\"yellowLed\":" + String(yellowLedOn ? "true" : "false") + "";
             js += "}";
