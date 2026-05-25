@@ -3,14 +3,13 @@
 #include <Arduino.h>
 #include "tempSensor.h"
 
-#define IN1_PIN 13
-#define IN2_PIN 14
-#define ENA_PIN 12
+#define RELAY_PIN 12
 
 #define LED_RED_PIN 15
 #define LED_YELLOW_PIN 2
 
 const float TEMP_SENSOR_INVALID_C = -100.0;
+const float TEMP_THRESHOLD_C = 26.0;
 
 const unsigned long LOGIC_LOOP_DELAY_MS = 150; // ms delay at end of logic loop
 
@@ -28,12 +27,6 @@ bool relayOn = false; // kept for UI compatibility: true when motor running
 bool redLedOn = false;
 bool yellowLedOn = false;
 
-int pumpPercentFromClarity(float clarity)
-{
-    int pump = (int)round(100.0 - clarity);
-    return constrain(pump, 0, 100);
-}
-
 const char *modeText()
 {
     switch (currentMode)
@@ -49,20 +42,8 @@ const char *modeText()
 
 void applyOutputs()
 {
-    int pwmValue = map(motorSpeedPercent, 0, 100, 0, 1023);
-
-    if (motorSpeedPercent > 0)
-    {
-        digitalWrite(IN1_PIN, HIGH);
-        digitalWrite(IN2_PIN, LOW);
-    }
-    else
-    {
-        digitalWrite(IN1_PIN, LOW);
-        digitalWrite(IN2_PIN, LOW);
-    }
-
-    analogWrite(ENA_PIN, pwmValue);
+    // Low-trigger relay: LOW = ON, HIGH = OFF
+    digitalWrite(RELAY_PIN, relayOn ? LOW : HIGH);
 
     digitalWrite(LED_RED_PIN, redLedOn ? HIGH : LOW);
     digitalWrite(LED_YELLOW_PIN, yellowLedOn ? HIGH : LOW);
@@ -70,9 +51,7 @@ void applyOutputs()
 
 void setup_logic()
 {
-    pinMode(IN1_PIN, OUTPUT);
-    pinMode(IN2_PIN, OUTPUT);
-    pinMode(ENA_PIN, OUTPUT);
+    pinMode(RELAY_PIN, OUTPUT);
     pinMode(LED_RED_PIN, OUTPUT);
     pinMode(LED_YELLOW_PIN, OUTPUT);
 
@@ -98,28 +77,12 @@ void loop_logic()
     }
     else
     {
-        motorSpeedPercent = pumpPercentFromClarity(waterClarity);
+        relayOn = temperatureC >= TEMP_THRESHOLD_C;
+        motorSpeedPercent = relayOn ? 100 : 0;
         powerPercent = motorSpeedPercent;
-        relayOn = motorSpeedPercent > 0;
-
-        if (motorSpeedPercent >= 70)
-        {
-            currentMode = MODE_FULL;
-            redLedOn = true;
-            yellowLedOn = false;
-        }
-        else if (motorSpeedPercent > 0)
-        {
-            currentMode = MODE_HALF;
-            redLedOn = false;
-            yellowLedOn = true;
-        }
-        else
-        {
-            currentMode = MODE_OFF;
-            redLedOn = false;
-            yellowLedOn = false;
-        }
+        currentMode = relayOn ? MODE_FULL : MODE_OFF;
+        redLedOn = relayOn;
+        yellowLedOn = false;
     }
 
     applyOutputs();
@@ -133,7 +96,7 @@ void loop_logic()
     Serial.print(" | Clarity=");
     Serial.print(waterClarity, 1);
     Serial.print("%");
-    Serial.print(" | Motor=");
+    Serial.print(" | Pump=");
     Serial.print(motorSpeedPercent);
     Serial.print("% | Relay=");
     Serial.print(relayOn ? "ON" : "OFF");
