@@ -5,14 +5,12 @@
 
 #define IN1_PIN 13
 #define IN2_PIN 14
-#define ENA_PIN 12
+#define RELAY_PIN 12
 
 #define LED_RED_PIN 15
 #define LED_YELLOW_PIN 2
 
-const float WASH_TARGET_TEMP_C = 30.0;
-const int BASE_SPEED_PERCENT = 50;
-const int SPEED_BOOST_PER_DEGREE = 5;
+const float MOTOR_ON_TEMP_C = 25.0;
 const float TEMP_SENSOR_INVALID_C = -100.0;
 
 const unsigned long LOGIC_LOOP_DELAY_MS = 150; // ms delay at end of logic loop
@@ -46,9 +44,7 @@ const char *modeText()
 
 void applyOutputs()
 {
-    int pwmValue = map(motorSpeedPercent, 0, 100, 0, 1023);
-
-    if (motorSpeedPercent > 0)
+    if (relayOn)
     {
         digitalWrite(IN1_PIN, HIGH);
         digitalWrite(IN2_PIN, LOW);
@@ -59,7 +55,7 @@ void applyOutputs()
         digitalWrite(IN2_PIN, LOW);
     }
 
-    analogWrite(ENA_PIN, pwmValue);
+    digitalWrite(RELAY_PIN, relayOn ? HIGH : LOW);
 
     digitalWrite(LED_RED_PIN, redLedOn ? HIGH : LOW);
     digitalWrite(LED_YELLOW_PIN, yellowLedOn ? HIGH : LOW);
@@ -69,7 +65,7 @@ void setup_logic()
 {
     pinMode(IN1_PIN, OUTPUT);
     pinMode(IN2_PIN, OUTPUT);
-    pinMode(ENA_PIN, OUTPUT);
+    pinMode(RELAY_PIN, OUTPUT);
     pinMode(LED_RED_PIN, OUTPUT);
     pinMode(LED_YELLOW_PIN, OUTPUT);
 
@@ -95,28 +91,15 @@ void loop_logic()
     }
     else
     {
-        float delta = WASH_TARGET_TEMP_C - temperatureC;
-        int speed = BASE_SPEED_PERCENT;
-        if (delta > 0)
-        {
-            speed += (int)round(delta * SPEED_BOOST_PER_DEGREE);
-        }
-
-        motorSpeedPercent = constrain(speed, 0, 100);
+        relayOn = temperatureC < MOTOR_ON_TEMP_C;
+        motorSpeedPercent = relayOn ? 100 : 0;
         powerPercent = motorSpeedPercent;
-        relayOn = motorSpeedPercent > 0;
 
-        if (motorSpeedPercent >= 75)
+        if (relayOn)
         {
             currentMode = MODE_FULL;
             redLedOn = true;
             yellowLedOn = false;
-        }
-        else if (motorSpeedPercent > 0)
-        {
-            currentMode = MODE_HALF;
-            redLedOn = false;
-            yellowLedOn = true;
         }
         else
         {
